@@ -10,6 +10,7 @@ export function LeagueSettingsPanel({
   value,
   onChange
 }: LeagueSettingsPanelProps) {
+
   const handleChange = <K extends keyof LeagueSettings>(
     key: K,
     newValue: LeagueSettings[K]
@@ -18,60 +19,94 @@ export function LeagueSettingsPanel({
   };
 
   return (
-    <div className="grid gap-3 text-xs md:grid-cols-3">
+    <div className="grid gap-3 text-xs md:grid-cols-2 lg:grid-cols-4">
+
+      {/* Superflex Toggle */}
       <div className="flex flex-col gap-1">
-        <label className="font-medium text-slate-700">QB Format</label>
-        <select
-          className="h-9 rounded-lg border border-border bg-white px-2 text-xs shadow-sm"
-          value={value.qbFormat}
-          onChange={(e) =>
-            handleChange("qbFormat", e.target.value as LeagueSettings["qbFormat"])
-          }
-        >
-          <option value="1QB">1QB</option>
-          <option value="2QB">2QB</option>
-          <option value="SUPERFLEX">Superflex</option>
-        </select>
+        <label className="font-medium text-slate-700">Superflex</label>
+        <label className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={value.superflex}
+            onChange={(e) => handleChange("superflex", e.target.checked)}
+          />
+          Enable Superflex
+        </label>
       </div>
+
+      {/* TE Premium Toggle */}
       <div className="flex flex-col gap-1">
-        <label className="font-medium text-slate-700">Scoring</label>
-        <select
-          className="h-9 rounded-lg border border-border bg-white px-2 text-xs shadow-sm"
-          value={value.scoringFormat}
-          onChange={(e) =>
-            handleChange(
-              "scoringFormat",
-              e.target.value as LeagueSettings["scoringFormat"]
-            )
-          }
-        >
-          <option value="PPR">PPR</option>
-          <option value="HALF_PPR">Half PPR</option>
-          <option value="STANDARD">Standard</option>
-        </select>
+        <label className="font-medium text-slate-700">TE Premium</label>
+        <label className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={value.tePremium}
+            onChange={(e) => handleChange("tePremium", e.target.checked)}
+          />
+          TE Premium Scoring
+        </label>
       </div>
+
+      {/* League Size */}
       <div className="flex flex-col gap-1">
         <label className="font-medium text-slate-700">League Size</label>
         <select
           className="h-9 rounded-lg border border-border bg-white px-2 text-xs shadow-sm"
           value={value.leagueSize}
           onChange={(e) =>
-            handleChange("leagueSize", Number(e.target.value) as any)
+            handleChange(
+              "leagueSize",
+              Number(e.target.value) as LeagueSettings["leagueSize"]
+            )
           }
         >
-          {[12, 18, 24, 32].map((size) => (
+          {[10, 12, 14, 16].map((size) => (
             <option key={size} value={size}>
               {size} Teams
             </option>
           ))}
         </select>
       </div>
+
+      {/* Variance Slider */}
+      <div className="flex flex-col gap-1">
+        <label className="font-medium text-slate-700">
+          Acceptable Variance ({value.variance}%)
+        </label>
+        <input
+          type="range"
+          min={0}
+          max={20}
+          step={1}
+          value={value.variance}
+          onChange={(e) =>
+            handleChange("variance", Number(e.target.value))
+          }
+        />
+      </div>
+
+      {/* Future Pick Adjustment */}
+      <div className="flex flex-col gap-1 col-span-full">
+        <label className="font-medium text-slate-700">
+          Future Pick Adjustment ({value.futurePickAdjustment}%)
+        </label>
+        <input
+          type="range"
+          min={0}
+          max={50}
+          step={5}
+          value={value.futurePickAdjustment}
+          onChange={(e) =>
+            handleChange("futurePickAdjustment", Number(e.target.value))
+          }
+        />
+      </div>
+
       <p className="col-span-full text-[11px] text-slate-500">
-        Settings update positional value curves in real time. Defaults to{" "}
-        {defaultLeagueSettings.qbFormat} • {defaultLeagueSettings.scoringFormat} •{" "}
-        {defaultLeagueSettings.leagueSize}-team.
+        Settings update dynasty trade values in real time. Defaults to Superflex •
+        PPR • {defaultLeagueSettings.leagueSize}-team league.
       </p>
+
     </div>
   );
 }
-
