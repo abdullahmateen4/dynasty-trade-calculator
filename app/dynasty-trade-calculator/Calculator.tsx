@@ -105,50 +105,25 @@ export default function Calculator() {
   }, [searchB, showAllB]);
 
   return (
-    <div className="flex flex-col gap-6">
-      <section className="grid gap-4 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-        <Card>
-          <CardHeader>
-            <CardTitle>League Settings</CardTitle>
+    <div className="flex flex-col gap-4">
+      <section className="grid gap-3 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+        <Card className="border-slate-200 shadow-md">
+          <CardHeader className="py-2.5">
+            <CardTitle className="text-base font-bold">League Settings</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="py-2">
             <LeagueSettingsPanel
               value={leagueSettings}
-              onChange={(next) => {
-                // #region agent log
-                fetch(
-                  "http://127.0.0.1:7801/ingest/0929cd9c-c1fd-4bdc-8876-6cbf98bbecdf",
-                  {
-                    method: "POST",
-                    headers: {
-                      "Content-Type": "application/json",
-                      "X-Debug-Session-Id": "f6b2b7"
-                    },
-                    body: JSON.stringify({
-                      sessionId: "f6b2b7",
-                      runId: "pre-fix",
-                      hypothesisId: "H2",
-                      location:
-                        "app/dynasty-trade-calculator/Calculator.tsx:LeagueSettingsPanel.onChange",
-                      message: "User changed league settings",
-                      data: next,
-                      timestamp: Date.now()
-                    })
-                  }
-                ).catch(() => {});
-                // #endregion agent log
-
-                setLeagueSettings(next);
-              }}
+              onChange={setLeagueSettings}
             />
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Trade Result Overview</CardTitle>
+        <Card className="border-slate-200 shadow-md">
+          <CardHeader className="py-2.5">
+            <CardTitle className="text-base font-bold">Trade Result</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="py-2">
             <TradeSummary
               teamA={teamA}
               teamB={teamB}
@@ -158,13 +133,13 @@ export default function Calculator() {
         </Card>
       </section>
 
-      <section className="grid gap-4 md:grid-cols-2">
-        <Card className="h-full">
-          <CardHeader>
-            <CardTitle>Team A</CardTitle>
+      <section className="grid gap-3 md:grid-cols-2">
+        <Card className="h-full border-slate-200 shadow-md">
+          <CardHeader className="py-2.5">
+            <CardTitle className="text-base font-bold">Team A</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="mb-3 space-y-2">
+          <CardContent className="py-2">
+            <div className="mb-2 space-y-1.5">
               <p className="text-[11px] text-slate-500">
                 Type to search or use the dropdown to browse players for Team A.
               </p>
@@ -210,7 +185,7 @@ export default function Calculator() {
             </div>
             <div className="flex flex-col gap-2">
               {teamA.length === 0 && (
-                <p className="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-3 py-4 text-center text-[11px] text-slate-500">
+                <p className="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-2 py-2.5 text-center text-[11px] text-slate-500">
                   No players added yet. Use{" "}
                   <span className="font-semibold">Add Player</span> to start
                   building Team A&apos;s side of the trade.
@@ -227,12 +202,12 @@ export default function Calculator() {
           </CardContent>
         </Card>
 
-        <Card className="h-full">
-          <CardHeader>
-            <CardTitle>Team B</CardTitle>
+        <Card className="h-full border-slate-200 shadow-md">
+          <CardHeader className="py-2.5">
+            <CardTitle className="text-base font-bold">Team B</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="mb-3 space-y-2">
+          <CardContent className="py-2">
+            <div className="mb-2 space-y-1.5">
               <p className="text-[11px] text-slate-500">
                 Type to search or use the dropdown to browse players for Team B.
               </p>
@@ -278,7 +253,7 @@ export default function Calculator() {
             </div>
             <div className="flex flex-col gap-2">
               {teamB.length === 0 && (
-                <p className="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-3 py-4 text-center text-[11px] text-slate-500">
+                <p className="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-2 py-2.5 text-center text-[11px] text-slate-500">
                   No players added yet. Use{" "}
                   <span className="font-semibold">Add Player</span> to start
                   building Team B&apos;s side of the trade.

@@ -59,45 +59,39 @@ export function TradeSummary({ teamA, teamB, leagueSettings }: TradeSummaryProps
 
   return (
     <div className="flex flex-col gap-2 text-xs">
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-slate-50 px-3 py-2">
-        <div className="flex items-center gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-slate-100 px-4 py-3 ring-1 ring-slate-200">
+        <div className="flex items-center gap-6">
           <div>
-            <div className="text-[11px] uppercase text-slate-500">Team A</div>
-            <div className="text-base font-semibold text-slate-900">
+            <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Team A</div>
+            <div className="text-2xl font-bold tabular-nums text-slate-900">
               {teamAResult.total.toFixed(1)}
             </div>
           </div>
           <div>
-            <div className="text-[11px] uppercase text-slate-500">Team B</div>
-            <div className="text-base font-semibold text-slate-900">
+            <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Team B</div>
+            <div className="text-2xl font-bold tabular-nums text-slate-900">
               {teamBResult.total.toFixed(1)}
             </div>
           </div>
         </div>
-        <div className="rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-semibold text-emerald-700">
+        <div className="rounded-lg bg-emerald-600 px-4 py-1.5 text-sm font-bold text-white shadow-sm">
           {winner}
         </div>
       </div>
-      <p className="px-1 text-[11px] text-slate-500">
-        Format: <span className="font-semibold">{leagueSettings.qbFormat}</span>{" "}
-        • <span className="font-semibold">{leagueSettings.scoringFormat}</span>{" "}
-        •{" "}
-        <span className="font-semibold">
-          {leagueSettings.leagueSize}-team league
-        </span>
-        . Player values scale with this format.
+      <p className="px-1 text-[10px] text-slate-500">
+        {leagueSettings.qbFormat} • {leagueSettings.scoringFormat} • {leagueSettings.leagueSize}-team
       </p>
-      <div className="mt-1 flex flex-col gap-1">
-        <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+      <details className="mt-0.5">
+        <summary className="cursor-pointer text-[10px] font-medium text-slate-500">
           Why this result
-        </div>
-        <ul className="list-disc space-y-1 pl-4 text-[11px] text-slate-600">
+        </summary>
+        <ul className="mt-0.5 list-disc space-y-0.5 pl-4 text-[10px] text-slate-600">
           {explanation.map((item) => (
             <li key={item}>{item}</li>
           ))}
         </ul>
-        <p className="mt-1 text-[11px] text-slate-400">{favors}</p>
-      </div>
+        <p className="mt-0.5 text-[10px] text-slate-400">{favors}</p>
+      </details>
     </div>
   );
 }
