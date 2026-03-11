@@ -14,6 +14,13 @@ export function TradeSummary({ teamA, teamB, leagueSettings }: TradeSummaryProps
 
   const diff = teamAResult.total - teamBResult.total;
 
+  const totalValue = teamAResult.total + teamBResult.total;
+
+  const teamAPercent =
+    totalValue > 0 ? (teamAResult.total / totalValue) * 100 : 50;
+
+  const valueDifference = Math.abs(diff).toFixed(1);
+
   const winner =
     diff > 5 ? "Team A Wins" : diff < -5 ? "Team B Wins" : "Balanced Trade";
 
@@ -61,6 +68,8 @@ export function TradeSummary({ teamA, teamB, leagueSettings }: TradeSummaryProps
 
   return (
     <div className="flex flex-col gap-2 text-xs">
+
+      {/* Team totals */}
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-slate-100 px-4 py-3 ring-1 ring-slate-200">
         <div className="flex items-center gap-6">
           <div>
@@ -87,12 +96,48 @@ export function TradeSummary({ teamA, teamB, leagueSettings }: TradeSummaryProps
         </div>
       </div>
 
-      {/* Updated league settings display */}
+      {/* Trade Balance Bar */}
+      <div className="mt-1 w-full">
+        <div className="relative h-2 w-full overflow-hidden rounded-full bg-slate-200">
+
+          <div
+            className="absolute left-0 top-0 h-full bg-gradient-to-r from-blue-500 to-blue-400 transition-all duration-500"
+            style={{ width: `${teamAPercent}%` }}
+          />
+
+          <div
+            className="absolute right-0 top-0 h-full bg-gradient-to-l from-red-500 to-red-400 transition-all duration-500"
+            style={{ width: `${100 - teamAPercent}%` }}
+          />
+
+        </div>
+
+        <div className="mt-1 flex justify-between text-[10px] font-medium text-slate-500">
+          <span>Team A</span>
+          <span>Team B</span>
+        </div>
+      </div>
+
+      {/* Value Difference */}
+      <div
+        className={`mt-1 flex items-center justify-center text-[11px] font-semibold ${
+          diff > 5
+            ? "text-blue-600"
+            : diff < -5
+            ? "text-red-600"
+            : "text-slate-600"
+        }`}
+      >
+        Value Difference: {valueDifference}
+      </div>
+
+      {/* League settings */}
       <p className="px-1 text-[10px] text-slate-500">
         {leagueSettings.superflex ? "SUPERFLEX" : "1QB"} • PPR • {leagueSettings.leagueSize}-team
         {leagueSettings.tePremium && " • TE Premium"}
       </p>
 
+      {/* Explanation */}
       <details className="mt-0.5">
         <summary className="cursor-pointer text-[10px] font-medium text-slate-500">
           Why this result
@@ -106,6 +151,7 @@ export function TradeSummary({ teamA, teamB, leagueSettings }: TradeSummaryProps
 
         <p className="mt-0.5 text-[10px] text-slate-400">{favors}</p>
       </details>
+
     </div>
   );
 }
