@@ -68,31 +68,42 @@ function getStarterAdjustment(status: StarterStatus): number {
   }
 }
 
+/*
+Position value adjustment
+Handles Superflex and TE Premium
+*/
 function getPositionMultiplier(
   position: Position,
   league: LeagueSettings
 ): number {
+
   const sizeFactor = league.leagueSize / 12;
 
   if (position === "QB") {
-    if (league.qbFormat === "SUPERFLEX") return 1.25 * sizeFactor;
-    if (league.qbFormat === "2QB") return 1.20 * sizeFactor;
+
+    // Superflex leagues make QBs much more valuable
+    if (league.superflex) {
+      return 1.25 * sizeFactor;
+    }
+
     return 1.05 * sizeFactor;
   }
 
   if (position === "RB") {
-    if (league.scoringFormat === "PPR") return 1.10 * sizeFactor;
-    if (league.scoringFormat === "HALF_PPR") return 1.05 * sizeFactor;
-    return 1.0 * sizeFactor;
+    return 1.05 * sizeFactor;
   }
 
   if (position === "WR") {
-    if (league.scoringFormat === "PPR") return 1.12 * sizeFactor;
-    if (league.scoringFormat === "HALF_PPR") return 1.08 * sizeFactor;
-    return 1.02 * sizeFactor;
+    return 1.08 * sizeFactor;
   }
 
   if (position === "TE") {
+
+    // TE premium increases TE value
+    if (league.tePremium) {
+      return 1.20 * sizeFactor;
+    }
+
     return 1.05 * sizeFactor;
   }
 
@@ -116,16 +127,20 @@ export function calculatePlayerValue(
   player: Player,
   leagueSettings: LeagueSettings
 ): PlayerValueBreakdown {
+
   const baseValue = rankToValue(player.baseValue);
 
   const ageMultiplier = getAgeAdjustment(player.age);
   const injuryMultiplier = getInjuryAdjustment(player.injuryStatus);
   const starterMultiplier = getStarterAdjustment(player.starterStatus);
+
   const positionMultiplier = getPositionMultiplier(
     player.position,
     leagueSettings
   );
+
   const scheduleMultiplier = getScheduleAdjustment(player);
+
   const projectionMultiplier = getProjectionAdjustment(baseValue);
 
   const finalValue = clamp(
@@ -154,6 +169,7 @@ export function summarizeTeamValue(
   players: Player[],
   leagueSettings: LeagueSettings
 ) {
+
   const breakdowns = players.map((p) =>
     calculatePlayerValue(p, leagueSettings)
   );

@@ -1,17 +1,30 @@
-export type QbFormat = "1QB" | "2QB" | "SUPERFLEX";
-export type ScoringFormat = "STANDARD" | "HALF_PPR" | "PPR";
-
-export type LeagueSize = 12 | 18 | 24 | 32;
+export type LeagueSize = 10 | 12 | 14 | 16;
 
 export interface LeagueSettings {
-  qbFormat: QbFormat;
-  scoringFormat: ScoringFormat;
+  // Superflex toggle (ON = Superflex league, OFF = 1QB)
+  superflex: boolean;
+
+  // TE Premium scoring boost
+  tePremium: boolean;
+
+  // Supported league sizes
   leagueSize: LeagueSize;
+
+  // Only PPR scoring supported
+  scoringFormat: "PPR";
+
+  // Trade fairness tolerance (% difference allowed)
+  variance: number;
+
+  // Future pick value discount (% per year)
+  futurePickAdjustment: number;
 }
 
 export const defaultLeagueSettings: LeagueSettings = {
-  qbFormat: "SUPERFLEX",
+  superflex: true,
+  tePremium: false,
+  leagueSize: 12,
   scoringFormat: "PPR",
-  leagueSize: 12
+  variance: 5,
+  futurePickAdjustment: 10
 };
-
