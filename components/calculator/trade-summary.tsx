@@ -13,6 +13,7 @@ export function TradeSummary({ teamA, teamB, leagueSettings }: TradeSummaryProps
   const teamBResult = summarizeTeamValue(teamB, leagueSettings);
 
   const diff = teamAResult.total - teamBResult.total;
+
   const winner =
     diff > 5 ? "Team A Wins" : diff < -5 ? "Team B Wins" : "Balanced Trade";
 
@@ -30,6 +31,7 @@ export function TradeSummary({ teamA, teamB, leagueSettings }: TradeSummaryProps
     teamA.length > 0
       ? teamA.reduce((sum, p) => sum + p.age, 0) / teamA.length
       : null;
+
   const avgAgeB =
     teamB.length > 0
       ? teamB.reduce((sum, p) => sum + p.age, 0) / teamB.length
@@ -62,37 +64,48 @@ export function TradeSummary({ teamA, teamB, leagueSettings }: TradeSummaryProps
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-slate-100 px-4 py-3 ring-1 ring-slate-200">
         <div className="flex items-center gap-6">
           <div>
-            <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Team A</div>
+            <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+              Team A
+            </div>
             <div className="text-2xl font-bold tabular-nums text-slate-900">
               {teamAResult.total.toFixed(1)}
             </div>
           </div>
+
           <div>
-            <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Team B</div>
+            <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+              Team B
+            </div>
             <div className="text-2xl font-bold tabular-nums text-slate-900">
               {teamBResult.total.toFixed(1)}
             </div>
           </div>
         </div>
+
         <div className="rounded-lg bg-emerald-600 px-4 py-1.5 text-sm font-bold text-white shadow-sm">
           {winner}
         </div>
       </div>
+
+      {/* Updated league settings display */}
       <p className="px-1 text-[10px] text-slate-500">
-        {leagueSettings.qbFormat} • {leagueSettings.scoringFormat} • {leagueSettings.leagueSize}-team
+        {leagueSettings.superflex ? "SUPERFLEX" : "1QB"} • PPR • {leagueSettings.leagueSize}-team
+        {leagueSettings.tePremium && " • TE Premium"}
       </p>
+
       <details className="mt-0.5">
         <summary className="cursor-pointer text-[10px] font-medium text-slate-500">
           Why this result
         </summary>
+
         <ul className="mt-0.5 list-disc space-y-0.5 pl-4 text-[10px] text-slate-600">
           {explanation.map((item) => (
             <li key={item}>{item}</li>
           ))}
         </ul>
+
         <p className="mt-0.5 text-[10px] text-slate-400">{favors}</p>
       </details>
     </div>
   );
 }
-
