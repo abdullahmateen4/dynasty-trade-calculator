@@ -23,6 +23,13 @@ export function TradeSummary({ teamA, teamB, leagueSettings }: TradeSummaryProps
   const winner =
     diff > 5 ? "Team A Wins" : diff < -5 ? "Team B Wins" : "Balanced Trade";
 
+  const advantageText =
+    diff > 5
+      ? `Team A +${valueDifference} Value Advantage`
+      : diff < -5
+      ? `Team B +${valueDifference} Value Advantage`
+      : "Perfectly Balanced Trade";
+
   const explanation: string[] = [];
 
   if (diff > 5) {
@@ -99,30 +106,35 @@ export function TradeSummary({ teamA, teamB, leagueSettings }: TradeSummaryProps
       <div className="mt-1 w-full">
         <div className="relative h-2 w-full overflow-hidden rounded-full bg-slate-200">
 
+          {/* Team A */}
           <div
             className="absolute left-0 top-0 h-full bg-gradient-to-r from-blue-500 to-blue-400 transition-all duration-500"
             style={{ width: `${teamAPercent}%` }}
           />
 
+          {/* Team B */}
           <div
             className="absolute right-0 top-0 h-full bg-gradient-to-l from-red-500 to-red-400 transition-all duration-500"
             style={{ width: `${100 - teamAPercent}%` }}
           />
 
+          {/* Fairness marker */}
+          <div className="pointer-events-none absolute left-1/2 top-[-2px] h-3 w-[2px] -translate-x-1/2 bg-slate-500 opacity-80" />
+
         </div>
       </div>
 
-      {/* Value Difference */}
+      {/* Trade Advantage */}
       <div
-        className={`mt-1 flex items-center justify-center text-[11px] font-semibold ${
+        className={`mt-2 flex items-center justify-center text-base font-bold ${
           diff > 5
             ? "text-blue-600"
             : diff < -5
             ? "text-red-600"
-            : "text-slate-600"
+            : "text-slate-700"
         }`}
       >
-        Value Difference: {valueDifference}
+        {advantageText}
       </div>
 
       {/* League settings */}

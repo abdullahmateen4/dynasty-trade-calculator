@@ -14,26 +14,35 @@ export function PlayerCard({
   className,
   onRemove
 }: PlayerCardProps) {
+
+  // Remove team abbreviation from name if present
+  const cleanName = player.name.replace(/\s*\(.*?\)/, "");
+
   return (
     <div
       className={cn(
-        "flex items-center justify-between rounded-lg border border-border bg-white px-3 py-2 text-xs shadow-sm",
+        "flex items-center justify-between rounded-lg border border-border bg-white px-3 py-2 shadow-sm",
         className
       )}
     >
-      <div className="flex flex-col">
+      {/* Player Info */}
+      <div className="flex flex-col leading-tight">
+
         {/* Player Name */}
-        <span className="font-medium">
-          {player.name}
+        <span className="text-sm font-semibold text-slate-800">
+          {cleanName}
         </span>
 
         {/* Player Details */}
         <span className="text-[11px] text-slate-500">
           {player.position} • Age {player.age} • {player.team}
         </span>
+
       </div>
 
+      {/* Value + Remove */}
       <div className="flex items-center gap-2">
+
         {typeof value === "number" && (
           <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-700">
             {value.toFixed(0)}
@@ -44,11 +53,12 @@ export function PlayerCard({
           <button
             type="button"
             onClick={onRemove}
-            className="text-[11px] text-slate-400 hover:text-red-500"
+            className="text-xs text-slate-400 transition hover:text-red-500"
           >
             ×
           </button>
         )}
+
       </div>
     </div>
   );
