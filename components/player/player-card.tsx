@@ -22,21 +22,24 @@ export function PlayerCard({
       )}
     >
       <div className="flex flex-col">
+        {/* Player Name */}
         <span className="font-medium">
-          {player.name}{" "}
-          <span className="text-[10px] text-slate-500">({player.team})</span>
+          {player.name}
         </span>
+
+        {/* Player Details */}
         <span className="text-[11px] text-slate-500">
-          {player.position} • Age {player.age} •{" "}
-          {player.starterStatus === "STARTER" ? "Starter" : "Backup"}
+          {player.position} • Age {player.age} • {player.team}
         </span>
       </div>
+
       <div className="flex items-center gap-2">
         {typeof value === "number" && (
           <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-700">
             {value.toFixed(0)}
           </span>
         )}
+
         {onRemove && (
           <button
             type="button"
@@ -50,4 +53,3 @@ export function PlayerCard({
     </div>
   );
 }
-

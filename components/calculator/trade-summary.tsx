@@ -13,7 +13,6 @@ export function TradeSummary({ teamA, teamB, leagueSettings }: TradeSummaryProps
   const teamBResult = summarizeTeamValue(teamB, leagueSettings);
 
   const diff = teamAResult.total - teamBResult.total;
-
   const totalValue = teamAResult.total + teamBResult.total;
 
   const teamAPercent =
@@ -110,11 +109,6 @@ export function TradeSummary({ teamA, teamB, leagueSettings }: TradeSummaryProps
             style={{ width: `${100 - teamAPercent}%` }}
           />
 
-        </div>
-
-        <div className="mt-1 flex justify-between text-[10px] font-medium text-slate-500">
-          <span>Team A</span>
-          <span>Team B</span>
         </div>
       </div>
 
