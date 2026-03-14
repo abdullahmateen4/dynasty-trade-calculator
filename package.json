@@ -1,22 +1,27 @@
 {
   "name": "dynasty-trade-calculator",
   "version": "0.1.0",
+  "description": "Dynasty fantasy football trade calculator",
+  "type": "module",
   "private": true,
+
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "update-values": "ts-node scripts/updateDynastyValues.ts"
   },
+
   "dependencies": {
     "@supabase/supabase-js": "latest",
     "classnames": "latest",
     "next": "latest",
     "react": "latest",
     "react-dom": "latest",
-    "recharts": "latest",
-    "typescript": "latest"
+    "recharts": "latest"
   },
+
   "devDependencies": {
     "@types/node": "latest",
     "@types/react": "latest",
@@ -26,6 +31,9 @@
     "eslint-config-next": "latest",
     "lightningcss": "^1.32.0",
     "postcss": "^8.5.8",
-    "tailwindcss": "^3.4.4"
+    "tailwindcss": "^3.4.4",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
   }
 }
