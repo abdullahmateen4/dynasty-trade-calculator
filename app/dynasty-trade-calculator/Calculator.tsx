@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { supabase } from "@/lib/supabaseClient";
+import { getSupabaseClient } from "@/lib/supabaseClient";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -19,7 +19,7 @@ import {
 import type { Player } from "@/lib/player";
 
 /* -----------------------------
-   Mapper: DB → UI
+Mapper: DB → UI
 ----------------------------- */
 
 function mapPlayerRowToPlayer(row: any): Player {
@@ -37,8 +37,9 @@ function mapPlayerRowToPlayer(row: any): Player {
 
 export default function Calculator() {
 
-  const [players, setPlayers] = React.useState<Player[]>([]);
+  const supabase = React.useMemo(() => getSupabaseClient(), []);
 
+  const [players, setPlayers] = React.useState<Player[]>([]);
   const [leagueSettings, setLeagueSettings] =
     React.useState<LeagueSettings>(defaultLeagueSettings);
 
@@ -52,7 +53,7 @@ export default function Calculator() {
   const [showAllB, setShowAllB] = React.useState(false);
 
   /* -----------------------------
-     Load players from Supabase
+  Load players from Supabase
   ----------------------------- */
 
   React.useEffect(() => {
@@ -69,9 +70,7 @@ export default function Calculator() {
           age,
           starter_status,
           injury_status,
-          player_values (
-            value
-          )
+          player_values(value)
         `)
         .order("name");
 
@@ -81,13 +80,12 @@ export default function Calculator() {
       }
 
       const mappedPlayers = (data || []).map(mapPlayerRowToPlayer);
-
       setPlayers(mappedPlayers);
     }
 
     loadPlayers();
 
-  }, []);
+  }, [supabase]);
 
   const handleRemovePlayer = (team: "A" | "B", playerId: string) => {
     if (team === "A") {
@@ -119,7 +117,6 @@ export default function Calculator() {
     });
 
     if (!showAllA && !q) return [];
-
     return base.slice(0, 8);
 
   }, [searchA, showAllA, players]);
@@ -134,7 +131,6 @@ export default function Calculator() {
     });
 
     if (!showAllB && !q) return [];
-
     return base.slice(0, 8);
 
   }, [searchB, showAllB, players]);
