@@ -18,6 +18,23 @@ import {
 
 import type { Player } from "@/lib/player";
 
+/* -----------------------------
+   Mapper: DB → UI
+----------------------------- */
+
+function mapPlayerRowToPlayer(row: any): Player {
+  return {
+    id: row.id,
+    name: row.name,
+    team: row.team ?? "",
+    position: row.position ?? "",
+    age: row.age ?? null,
+    baseValue: row.player_values?.[0]?.value ?? 0,
+    starterStatus: row.starter_status ?? false,
+    injuryStatus: row.injury_status ?? null
+  };
+}
+
 export default function Calculator() {
 
   const [players, setPlayers] = React.useState<Player[]>([]);
@@ -34,25 +51,38 @@ export default function Calculator() {
   const [showAllA, setShowAllA] = React.useState(false);
   const [showAllB, setShowAllB] = React.useState(false);
 
-  // Load players from Supabase
+  /* -----------------------------
+     Load players from Supabase
+  ----------------------------- */
+
   React.useEffect(() => {
 
     async function loadPlayers() {
 
       const { data, error } = await supabase
         .from("players")
-        .select("*")
+        .select(`
+          id,
+          name,
+          team,
+          position,
+          age,
+          starter_status,
+          injury_status,
+          player_values (
+            value
+          )
+        `)
         .order("name");
-
-      console.log("SUPABASE PLAYERS:", data);
-      console.log("SUPABASE ERROR:", error);
 
       if (error) {
         console.error("Error loading players:", error);
         return;
       }
 
-      setPlayers(data || []);
+      const mappedPlayers = (data || []).map(mapPlayerRowToPlayer);
+
+      setPlayers(mappedPlayers);
     }
 
     loadPlayers();
@@ -80,6 +110,7 @@ export default function Calculator() {
   };
 
   const filteredA = React.useMemo(() => {
+
     const q = searchA.toLowerCase().trim();
 
     const base = players.filter(p => {
@@ -88,11 +119,13 @@ export default function Calculator() {
     });
 
     if (!showAllA && !q) return [];
+
     return base.slice(0, 8);
 
   }, [searchA, showAllA, players]);
 
   const filteredB = React.useMemo(() => {
+
     const q = searchB.toLowerCase().trim();
 
     const base = players.filter(p => {
@@ -101,6 +134,7 @@ export default function Calculator() {
     });
 
     if (!showAllB && !q) return [];
+
     return base.slice(0, 8);
 
   }, [searchB, showAllB, players]);
@@ -151,6 +185,7 @@ export default function Calculator() {
       <section className="grid gap-3 md:grid-cols-2">
 
         {/* TEAM A */}
+
         <Card className="h-full border-slate-200 shadow-md">
 
           <CardHeader className="py-2.5 bg-blue-50 border-b border-blue-100 rounded-t-lg">
@@ -242,6 +277,7 @@ export default function Calculator() {
         </Card>
 
         {/* TEAM B */}
+
         <Card className="h-full border-slate-200 shadow-md">
 
           <CardHeader className="py-2.5 bg-blue-50 border-b border-blue-100 rounded-t-lg">
