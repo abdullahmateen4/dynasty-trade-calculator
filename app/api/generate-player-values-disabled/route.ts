@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { getSupabaseServiceClient } from "@/lib/supabaseClient";
 
-// ✅ Required for Vercel
+// ✅ CRITICAL FIXES FOR VERCEL
+export const runtime = "nodejs";        // 🔥 fixes fetch failure
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
@@ -25,13 +26,14 @@ export async function GET() {
   try {
     const supabase = getSupabaseServiceClient();
 
-    // ✅ FIXED fetch (important)
+    // ✅ STABLE FETCH (fixed for Vercel)
     const res = await fetch("https://api.sleeper.app/v1/players/nfl", {
       method: "GET",
       headers: {
         Accept: "application/json",
       },
       cache: "no-store",
+      next: { revalidate: 0 },
     });
 
     if (!res.ok) {
@@ -40,12 +42,12 @@ export async function GET() {
 
     const data = await res.json();
 
-    // ✅ Convert + filter early (performance)
+    // ✅ FILTER EARLY (reduces load)
     const playersArray = Object.values(data).filter((p: any) =>
       ["QB", "RB", "WR", "TE"].includes(p.position)
     );
 
-    // ✅ Transform
+    // ✅ TRANSFORM DATA
     const filteredPlayers = playersArray.map((p: any) => ({
       sleeper_id: String(p.player_id),
       name: p.full_name,
@@ -58,7 +60,7 @@ export async function GET() {
       injury_status: p.injury_status || null,
     }));
 
-    // ✅ Batch insert
+    // ✅ BATCH INSERT (safe for serverless)
     const batchSize = 500;
     let totalInserted = 0;
 
@@ -71,7 +73,10 @@ export async function GET() {
 
       if (error) {
         console.error("Batch insert error:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json(
+          { error: error.message },
+          { status: 500 }
+        );
       }
 
       totalInserted += batch.length;
