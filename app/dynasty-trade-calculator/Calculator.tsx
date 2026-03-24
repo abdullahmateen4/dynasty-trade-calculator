@@ -4,7 +4,6 @@ import * as React from "react";
 import { getSupabaseClient } from "@/lib/supabaseClient";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 import { LeagueSettingsPanel } from "@/components/calculator/league-settings-panel";
@@ -24,12 +23,12 @@ Mapper: DB → UI
 
 function mapPlayerRowToPlayer(row: any): Player {
   return {
-    id: row.id,
+    id: String(row.id), // ✅ FIXED
     name: row.name,
     team: row.team ?? "",
     position: row.position ?? "",
     age: row.age ?? null,
-    baseValue: row.player_values?.[0]?.value ?? 0,
+    baseValue: row.player_values?.[0]?.value ?? 0, // ✅ FIXED
     starterStatus: row.starter_status ?? false,
     injuryStatus: row.injury_status ?? null
   };
@@ -87,6 +86,10 @@ export default function Calculator() {
 
   }, [supabase]);
 
+  /* -----------------------------
+  Handlers
+  ----------------------------- */
+
   const handleRemovePlayer = (team: "A" | "B", playerId: string) => {
     if (team === "A") {
       setTeamA(prev => prev.filter(p => p.id !== playerId));
@@ -106,6 +109,10 @@ export default function Calculator() {
       setShowAllB(false);
     }
   };
+
+  /* -----------------------------
+  Filters
+  ----------------------------- */
 
   const filteredA = React.useMemo(() => {
 
@@ -135,6 +142,10 @@ export default function Calculator() {
 
   }, [searchB, showAllB, players]);
 
+  /* -----------------------------
+  UI
+  ----------------------------- */
+
   return (
 
     <div className="flex flex-col gap-4">
@@ -142,30 +153,25 @@ export default function Calculator() {
       <section className="grid gap-3 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
 
         <Card className="border-slate-200 shadow-md">
-
           <CardHeader className="py-2.5 bg-blue-50 border-b border-blue-100 rounded-t-lg">
             <CardTitle className="text-lg font-semibold text-slate-800">
               League Settings
             </CardTitle>
           </CardHeader>
-
           <CardContent className="py-2">
             <LeagueSettingsPanel
               value={leagueSettings}
               onChange={setLeagueSettings}
             />
           </CardContent>
-
         </Card>
 
         <Card className="border-slate-200 shadow-md">
-
           <CardHeader className="py-2.5 bg-blue-50 border-b border-blue-100 rounded-t-lg">
             <CardTitle className="text-lg font-semibold text-slate-800">
               Trade Result
             </CardTitle>
           </CardHeader>
-
           <CardContent className="py-2">
             <TradeSummary
               teamA={teamA}
@@ -173,7 +179,6 @@ export default function Calculator() {
               leagueSettings={leagueSettings}
             />
           </CardContent>
-
         </Card>
 
       </section>
@@ -181,83 +186,36 @@ export default function Calculator() {
       <section className="grid gap-3 md:grid-cols-2">
 
         {/* TEAM A */}
-
         <Card className="h-full border-slate-200 shadow-md">
-
           <CardHeader className="py-2.5 bg-blue-50 border-b border-blue-100 rounded-t-lg">
-            <CardTitle className="text-lg font-semibold text-slate-800">
-              Team A
-            </CardTitle>
+            <CardTitle>Team A</CardTitle>
           </CardHeader>
-
           <CardContent className="py-2">
 
-            <div className="mb-2 space-y-1.5">
+            <Input
+              placeholder="Search player..."
+              value={searchA}
+              onChange={(e) => {
+                setSearchA(e.target.value);
+                setShowAllA(false);
+              }}
+            />
 
-              <p className="text-[11px] text-slate-500">
-                Type to search or browse players for Team A.
-              </p>
-
-              <div className="flex items-center gap-2">
-
-                <Input
-                  placeholder="Search and add player to Team A…"
-                  value={searchA}
-                  onChange={(e) => {
-                    setSearchA(e.target.value);
-                    setShowAllA(false);
-                  }}
-                />
-
-                <Button
-                  type="button"
-                  onClick={() => setShowAllA(prev => !prev)}
-                >
-                  {showAllA ? "Hide" : "Browse"}
-                </Button>
-
+            {filteredA.length > 0 && (
+              <div className="max-h-60 overflow-y-auto border mt-2 rounded">
+                {filteredA.map(player => (
+                  <button
+                    key={player.id}
+                    onClick={() => handleAddToTeam("A", player)}
+                    className="w-full text-left p-2 hover:bg-gray-100"
+                  >
+                    {player.name} ({player.position} - {player.team})
+                  </button>
+                ))}
               </div>
+            )}
 
-              {filteredA.length > 0 && (
-                <div className="mt-1 max-h-52 overflow-y-auto rounded-lg border bg-white text-xs shadow-md">
-
-                  {filteredA.map(player => (
-
-                    <button
-                      key={player.id}
-                      type="button"
-                      className="flex w-full items-center justify-between px-3 py-2 hover:bg-slate-50"
-                      onClick={() => handleAddToTeam("A", player)}
-                    >
-
-                      <span>
-                        <span className="font-medium">{player.name}</span>{" "}
-                        <span className="text-[10px] text-slate-500">
-                          {player.position} • {player.team}
-                        </span>
-                      </span>
-
-                      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold">
-                        {player.baseValue}
-                      </span>
-
-                    </button>
-
-                  ))}
-
-                </div>
-              )}
-
-            </div>
-
-            <div className="flex flex-col gap-2">
-
-              {teamA.length === 0 && (
-                <p className="text-center text-[11px] text-slate-500">
-                  No players added yet.
-                </p>
-              )}
-
+            <div className="mt-3 flex flex-col gap-2">
               {teamA.map(player => (
                 <PlayerCard
                   key={player.id}
@@ -265,91 +223,42 @@ export default function Calculator() {
                   onRemove={() => handleRemovePlayer("A", player.id)}
                 />
               ))}
-
             </div>
 
           </CardContent>
-
         </Card>
 
         {/* TEAM B */}
-
         <Card className="h-full border-slate-200 shadow-md">
-
           <CardHeader className="py-2.5 bg-blue-50 border-b border-blue-100 rounded-t-lg">
-            <CardTitle className="text-lg font-semibold text-slate-800">
-              Team B
-            </CardTitle>
+            <CardTitle>Team B</CardTitle>
           </CardHeader>
-
           <CardContent className="py-2">
 
-            <div className="mb-2 space-y-1.5">
+            <Input
+              placeholder="Search player..."
+              value={searchB}
+              onChange={(e) => {
+                setSearchB(e.target.value);
+                setShowAllB(false);
+              }}
+            />
 
-              <p className="text-[11px] text-slate-500">
-                Type to search or browse players for Team B.
-              </p>
-
-              <div className="flex items-center gap-2">
-
-                <Input
-                  placeholder="Search and add player to Team B…"
-                  value={searchB}
-                  onChange={(e) => {
-                    setSearchB(e.target.value);
-                    setShowAllB(false);
-                  }}
-                />
-
-                <Button
-                  type="button"
-                  onClick={() => setShowAllB(prev => !prev)}
-                >
-                  {showAllB ? "Hide" : "Browse"}
-                </Button>
-
+            {filteredB.length > 0 && (
+              <div className="max-h-60 overflow-y-auto border mt-2 rounded">
+                {filteredB.map(player => (
+                  <button
+                    key={player.id}
+                    onClick={() => handleAddToTeam("B", player)}
+                    className="w-full text-left p-2 hover:bg-gray-100"
+                  >
+                    {player.name} ({player.position} - {player.team})
+                  </button>
+                ))}
               </div>
+            )}
 
-              {filteredB.length > 0 && (
-                <div className="mt-1 max-h-52 overflow-y-auto rounded-lg border bg-white text-xs shadow-md">
-
-                  {filteredB.map(player => (
-
-                    <button
-                      key={player.id}
-                      type="button"
-                      className="flex w-full items-center justify-between px-3 py-2 hover:bg-slate-50"
-                      onClick={() => handleAddToTeam("B", player)}
-                    >
-
-                      <span>
-                        <span className="font-medium">{player.name}</span>{" "}
-                        <span className="text-[10px] text-slate-500">
-                          {player.position} • {player.team}
-                        </span>
-                      </span>
-
-                      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold">
-                        {player.baseValue}
-                      </span>
-
-                    </button>
-
-                  ))}
-
-                </div>
-              )}
-
-            </div>
-
-            <div className="flex flex-col gap-2">
-
-              {teamB.length === 0 && (
-                <p className="text-center text-[11px] text-slate-500">
-                  No players added yet.
-                </p>
-              )}
-
+            <div className="mt-3 flex flex-col gap-2">
               {teamB.map(player => (
                 <PlayerCard
                   key={player.id}
@@ -357,11 +266,9 @@ export default function Calculator() {
                   onRemove={() => handleRemovePlayer("B", player.id)}
                 />
               ))}
-
             </div>
 
           </CardContent>
-
         </Card>
 
       </section>

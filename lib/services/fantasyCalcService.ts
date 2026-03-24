@@ -12,45 +12,75 @@ export interface FantasyCalcWithPlayerId extends FantasyCalcPlayer {
   player_id: string | null;
 }
 
-const FANTASYCALC_PLAYERS_URL = "https://fantasycalc.com/api/v1/players";
+// ✅ MULTIPLE FALLBACK SOURCES
+const URLS = [
+  "https://api.fantasycalc.com/values",
+  "https://fantasycalc.com/api/v1/players?format=json"
+];
 
-/**
- * Fetches dynasty market values from FantasyCalc public API.
- * https://fantasycalc.com/api/v1/players
- */
 export async function fetchFantasyCalcPlayers(): Promise<FantasyCalcPlayer[]> {
-  const res = await fetch(FANTASYCALC_PLAYERS_URL);
+  for (const url of URLS) {
+    try {
+      console.log(`🌐 Trying: ${url}`);
 
-  if (!res.ok) {
-    console.warn("[fantasyCalc] fetch failed", await res.text());
-    return [];
+      const res = await fetch(url, {
+        headers: {
+          "User-Agent":
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+          "Accept": "application/json",
+        },
+      });
+
+      const text = await res.text();
+
+      // ❌ HTML detected → skip
+      if (text.startsWith("<!DOCTYPE") || text.startsWith("<html")) {
+        console.warn("❌ Blocked (HTML response)");
+        continue;
+      }
+
+      const data = JSON.parse(text);
+
+      // ✅ Case 1: { players: [] }
+      const playersArray = Array.isArray(data)
+        ? data
+        : data.players ?? [];
+
+      if (!Array.isArray(playersArray) || playersArray.length === 0) {
+        console.warn("⚠️ Empty response, trying next...");
+        continue;
+      }
+
+      const players = playersArray.map((p: any) => ({
+        id: String(p.id ?? p.player_id ?? ""),
+        name: p.name,
+        position: (p.position ?? "").toString(),
+        market_value: Number(p.value ?? 0),
+        trade_frequency: Number(p.trades ?? 0),
+      }));
+
+      console.log(`✅ SUCCESS: fetched ${players.length} players`);
+      return players;
+    } catch (err) {
+      console.warn("❌ Failed attempt, trying next...", err);
+    }
   }
 
-  const data: any[] = await res.json();
-
-  return data
-    .filter((p) => typeof p.name === "string")
-    .map((p) => ({
-      id: String(p.id),
-      name: p.name as string,
-      position: (p.position ?? "").toString(),
-      market_value: Number(p.value ?? p.market_value ?? 0),
-      trade_frequency: Number(p.trades ?? p.trade_frequency ?? 0)
-    }));
+  console.error("❌ All FantasyCalc sources failed");
+  return [];
 }
 
 /**
- * Maps FantasyCalc players to Supabase player IDs by name and position.
+ * Mapping (same as before)
  */
 export async function mapFantasyCalcPlayersToSupabase(
   fcPlayers: FantasyCalcPlayer[]
 ): Promise<FantasyCalcWithPlayerId[]> {
   const supabase = getSupabaseServiceClient();
-  if (!supabase) {
+
+  if (!supabase || fcPlayers.length === 0) {
     return fcPlayers.map((p) => ({ ...p, player_id: null }));
   }
-
-  if (fcPlayers.length === 0) return [];
 
   const { data: players, error } = await supabase
     .from("players")
@@ -68,13 +98,16 @@ export async function mapFantasyCalcPlayersToSupabase(
     const direct = players.find(
       (pl) =>
         (pl.name as string).toLowerCase() === nameLower &&
-        (!posUpper || (pl.position ?? "").toString().toUpperCase() === posUpper)
+        (!posUpper ||
+          (pl.position ?? "").toString().toUpperCase() === posUpper)
     );
 
     const partial =
       direct ??
       players.find((pl) =>
-        (pl.name as string).toLowerCase().includes(nameLower.split(" ")[0] || "")
+        (pl.name as string)
+          .toLowerCase()
+          .includes(nameLower.split(" ")[0] || "")
       );
 
     return { ...p, player_id: partial?.id ?? null };
