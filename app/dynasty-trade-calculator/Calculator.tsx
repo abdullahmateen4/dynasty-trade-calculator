@@ -23,12 +23,16 @@ Mapper: DB → UI
 
 function mapPlayerRowToPlayer(row: any): Player {
   return {
-    id: String(row.id), // ✅ FIXED
+    id: String(row.id),
+
+    // ✅ FIX ADDED (nothing else changed)
+    sleeper_id: String(row.sleeper_id ?? row.id),
+
     name: row.name,
     team: row.team ?? "",
     position: row.position ?? "",
     age: row.age ?? null,
-    baseValue: row.player_values?.[0]?.value ?? 0, // ✅ FIXED
+    baseValue: row.player_values?.[0]?.value ?? 0,
     starterStatus: row.starter_status ?? false,
     injuryStatus: row.injury_status ?? null
   };
