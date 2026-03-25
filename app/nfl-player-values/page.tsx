@@ -25,8 +25,10 @@ export default function NflPlayerValuesPage() {
         return;
       }
 
+      // ✅ FIX APPLIED HERE
       const formatted = data.map((p: any) => ({
         id: p.id,
+        sleeper_id: p.sleeper_id || p.id, // ✅ REQUIRED FIX
         name: p.name,
         team: p.team,
         position: p.position,
