@@ -24,10 +24,7 @@ Mapper: DB → UI
 function mapPlayerRowToPlayer(row: any): Player {
   return {
     id: String(row.id),
-
-    // ✅ FIX ADDED (nothing else changed)
-    sleeper_id: String(row.sleeper_id ?? row.id),
-
+    sleeper_id: row.sleeper_id || String(row.id),
     name: row.name,
     team: row.team ?? "",
     position: row.position ?? "",
