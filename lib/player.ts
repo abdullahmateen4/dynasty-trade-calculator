@@ -1,12 +1,14 @@
-export interface Player {
+export type Position = "QB" | "RB" | "WR" | "TE" | "DST" | "K";
+export type StarterStatus = "STARTER" | "BACKUP" | "BENCH";
+export type InjuryStatus = "HEALTHY" | "MINOR" | "MAJOR";
+
+export type Player = {
   id: string;
   name: string;
   team: string;
-  position: string;
-  age: number | null;
-
+  position: Position;
+  age: number;
   baseValue: number;
-
-  starterStatus: boolean;
-  injuryStatus: string | null;
-}
+  starterStatus: StarterStatus;
+  injuryStatus: InjuryStatus;
+};

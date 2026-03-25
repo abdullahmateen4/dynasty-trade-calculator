@@ -46,7 +46,7 @@ async function runImport() {
     const data = await res.json();
 
     // ✅ Convert object → array + filter positions
-    const playersArray = Object.values(data).filter((p: any) =>
+    const playersArray = Object.values(data as Record<string, any>).filter((p) =>
       ["QB", "RB", "WR", "TE"].includes(p.position)
     );
 
