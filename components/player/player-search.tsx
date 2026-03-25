@@ -16,27 +16,49 @@ export function PlayerSearch({ onSelect }: PlayerSearchProps) {
   const [results, setResults] = React.useState<Player[]>([]);
   const [loading, setLoading] = React.useState(false);
 
-  // 🔥 THIS IS THE MAIN SEARCH ENGINE
-  React.useEffect(() => {
-    console.log("🔥 EFFECT RUN:", query);
+  // 🔥 Prevent race conditions (VERY IMPORTANT)
+  const lastQueryRef = React.useRef("");
 
-    const delay = setTimeout(async () => {
-      if (query.length < 2) {
+  React.useEffect(() => {
+    const runSearch = async () => {
+      const trimmed = query.trim();
+
+      console.log("🔥 SEARCH TRIGGERED:", trimmed);
+
+      if (!trimmed || trimmed.length < 2) {
         setResults([]);
         return;
       }
 
-      console.log("🚀 CALLING SEARCH");
-
+      lastQueryRef.current = trimmed;
       setLoading(true);
 
-      const data = await searchPlayers(query);
+      try {
+        const data = await searchPlayers(trimmed);
 
-      console.log("📦 DATA RETURNED:", data);
+        console.log("📦 RESULTS FROM SUPABASE:", data);
 
-      setResults(data);
-      setLoading(false);
-    }, 300);
+        // 🚨 Prevent outdated results overriding new ones
+        if (lastQueryRef.current !== trimmed) return;
+
+        if (Array.isArray(data)) {
+          setResults(data);
+        } else {
+          console.warn("⚠️ Unexpected data format:", data);
+          setResults([]);
+        }
+      } catch (err) {
+        console.error("❌ SEARCH FAILED:", err);
+        setResults([]);
+      } finally {
+        if (lastQueryRef.current === trimmed) {
+          setLoading(false);
+        }
+      }
+    };
+
+    // ⏱ Debounce
+    const delay = setTimeout(runSearch, 300);
 
     return () => clearTimeout(delay);
   }, [query]);
@@ -49,8 +71,9 @@ export function PlayerSearch({ onSelect }: PlayerSearchProps) {
           placeholder="Search by player, team, or position…"
           value={query}
           onChange={(e) => {
-            console.log("⌨️ INPUT:", e.target.value);
-            setQuery(e.target.value);
+            const value = e.target.value;
+            console.log("⌨️ INPUT:", value);
+            setQuery(value);
           }}
         />
 
@@ -81,7 +104,7 @@ export function PlayerSearch({ onSelect }: PlayerSearchProps) {
 
         {results.map((player) => (
           <button
-          key={player.id}
+            key={player.sleeper_id} // ✅ FIXED (no more red line)
             type="button"
             onClick={() => onSelect(player)}
             className="text-left"

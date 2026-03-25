@@ -4,6 +4,7 @@ export type InjuryStatus = "HEALTHY" | "MINOR" | "MAJOR";
 
 export type Player = {
   id: string;
+  sleeper_id: string;
   name: string;
   team: string;
   position: Position;
