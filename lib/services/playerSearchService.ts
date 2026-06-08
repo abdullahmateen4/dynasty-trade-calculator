@@ -1,9 +1,4 @@
-import { createClient } from "@supabase/supabase-js";
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+import { getSupabaseClient } from "../supabaseClient";
 
 export async function searchPlayers(searchTerm: string) {
   if (!searchTerm || searchTerm.length < 2) return [];
@@ -11,6 +6,8 @@ export async function searchPlayers(searchTerm: string) {
   const term = searchTerm.trim();
 
   try {
+    const supabase = getSupabaseClient();
+
     const { data, error } = await supabase
       .from("players")
       .select("*")

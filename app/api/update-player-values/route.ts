@@ -1,42 +1,26 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
-// ✅ Validate ENV early (prevents silent crashes)
-if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-  throw new Error("Missing Supabase environment variables");
-}
-
-// ✅ Supabase admin client
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
-
 const SLEEPER_URL = "https://api.sleeper.app/v1/players/nfl";
-
-// ✅ Helper: batch processing (important for large datasets)
-async function upsertInBatches(data: any[], batchSize = 500) {
-  for (let i = 0; i < data.length; i += batchSize) {
-    const batch = data.slice(i, i + batchSize);
-
-    const { error } = await supabase
-      .from("players")
-      .upsert(batch, { onConflict: "sleeper_id" });
-
-    if (error) {
-      console.error("❌ Batch upsert error:", error);
-      throw error;
-    }
-
-    console.log(`✅ Batch ${i / batchSize + 1} inserted (${batch.length} rows)`);
-  }
-}
 
 export async function GET() {
   try {
+    // Validate env vars inside handler (not at module level)
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    if (!supabaseUrl || !supabaseKey) {
+      return NextResponse.json(
+        { success: false, error: "Missing Supabase environment variables" },
+        { status: 500 }
+      );
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
     console.log("🚀 Fetching Sleeper players...");
 
-    // ✅ Add timeout protection
+    // Timeout protection
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 15000);
 
@@ -78,8 +62,22 @@ export async function GET() {
 
     console.log(`✅ Total players processed: ${players.length}`);
 
-    // ✅ Insert in batches (prevents Supabase limits)
-    await upsertInBatches(players);
+    // Batch upsert (prevents Supabase limits)
+    const batchSize = 500;
+    for (let i = 0; i < players.length; i += batchSize) {
+      const batch = players.slice(i, i + batchSize);
+
+      const { error } = await supabase
+        .from("players")
+        .upsert(batch, { onConflict: "sleeper_id" });
+
+      if (error) {
+        console.error("❌ Batch upsert error:", error);
+        throw error;
+      }
+
+      console.log(`✅ Batch ${i / batchSize + 1} inserted (${batch.length} rows)`);
+    }
 
     return NextResponse.json({
       success: true,

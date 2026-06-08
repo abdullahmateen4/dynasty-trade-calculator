@@ -29,7 +29,7 @@ function mapPlayerRowToPlayer(row: any): Player {
     team: row.team ?? "",
     position: row.position ?? "",
     age: row.age ?? null,
-    baseValue: row.player_values?.[0]?.value ?? 0,
+    baseValue: 0,
     starterStatus: row.starter_status ?? false,
     injuryStatus: row.injury_status ?? null
   };
@@ -64,18 +64,27 @@ export default function Calculator() {
         .from("players")
         .select(`
           id,
+          sleeper_id,
           name,
           team,
           position,
           age,
           starter_status,
-          injury_status,
-          player_values(value)
+          injury_status
         `)
         .order("name");
 
+      console.log("Players returned:", data?.length);
+      console.log("First player:", data?.[0]);
+
       if (error) {
-        console.error("Error loading players:", error);
+        console.error("Error loading players:", {
+          message: error?.message,
+          details: error?.details,
+          hint: error?.hint,
+          code: error?.code,
+          fullError: error,
+        });
         return;
       }
 

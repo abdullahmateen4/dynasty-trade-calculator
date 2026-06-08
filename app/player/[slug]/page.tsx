@@ -1,24 +1,26 @@
 import type { Metadata } from "next";
 
 interface PlayerPageProps {
-  params: { slug: string };
+  params: Promise<{ slug: string }>;
 }
 
-export function generateMetadata({
+export async function generateMetadata({
   params
-}: PlayerPageProps): Metadata {
-  const name = params.slug.replace(/-/g, " ");
+}: PlayerPageProps): Promise<Metadata> {
+  const { slug } = await params;
+  const name = slug.replace(/-/g, " ");
   return {
     title: `${name} Dynasty Value | Dynasty Trade Calculator`,
     description: `Dynasty fantasy football player value, trends, and trade outlook for ${name}.`,
     alternates: {
-      canonical: `/player/${params.slug}`
+      canonical: `/player/${slug}`
     }
   };
 }
 
-export default function PlayerPage({ params }: PlayerPageProps) {
-  const readableName = params.slug.replace(/-/g, " ");
+export default async function PlayerPage({ params }: PlayerPageProps) {
+  const { slug } = await params;
+  const readableName = slug.replace(/-/g, " ");
 
   return (
     <div className="space-y-3">
@@ -33,4 +35,3 @@ export default function PlayerPage({ params }: PlayerPageProps) {
     </div>
   );
 }
-

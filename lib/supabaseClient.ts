@@ -1,9 +1,13 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 /*
-Client for frontend / browser usage
+Client for frontend / browser usage (singleton)
 */
-export function getSupabaseClient() {
+let _client: SupabaseClient | null = null;
+
+export function getSupabaseClient(): SupabaseClient {
+  if (_client) return _client;
+
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
@@ -11,13 +15,18 @@ export function getSupabaseClient() {
     throw new Error("Supabase environment variables are missing.");
   }
 
-  return createClient(url, key);
+  _client = createClient(url, key);
+  return _client;
 }
 
 /*
-Service client for backend (API routes, cron jobs)
+Service client for backend (API routes, cron jobs) (singleton)
 */
-export function getSupabaseServiceClient() {
+let _serviceClient: SupabaseClient | null = null;
+
+export function getSupabaseServiceClient(): SupabaseClient {
+  if (_serviceClient) return _serviceClient;
+
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
@@ -25,5 +34,6 @@ export function getSupabaseServiceClient() {
     throw new Error("Supabase service role key missing.");
   }
 
-  return createClient(url, key);
+  _serviceClient = createClient(url, key);
+  return _serviceClient;
 }
