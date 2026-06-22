@@ -35,6 +35,15 @@ function mapPlayerRowToPlayer(row: any): Player {
   };
 }
 
+function cleanStringForSearch(str: string): string {
+  return str
+    .toLowerCase()
+    .replace(/[.'’\-]/g, "")
+    .replace(/\s+(jr|sr|ii|iii|iv|v)\b/gi, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 export default function Calculator() {
 
   const supabase = React.useMemo(() => getSupabaseClient(), []);
@@ -59,36 +68,111 @@ export default function Calculator() {
   React.useEffect(() => {
 
     async function loadPlayers() {
-
-      const { data, error } = await supabase
+      // 1. Fetch the exact count of players in the Supabase table for debug logging
+      const { count: dbCount, error: countError } = await supabase
         .from("players")
-        .select(`
-          id,
-          sleeper_id,
-          name,
-          team,
-          position,
-          age,
-          starter_status,
-          injury_status
-        `)
-        .order("name");
+        .select("*", { count: "exact", head: true });
 
-      console.log("Players returned:", data?.length);
-      console.log("First player:", data?.[0]);
-
-      if (error) {
-        console.error("Error loading players:", {
-          message: error?.message,
-          details: error?.details,
-          hint: error?.hint,
-          code: error?.code,
-          fullError: error,
-        });
-        return;
+      if (countError) {
+        console.error("[Calculator] Error fetching exact player count:", countError);
       }
 
-      const mappedPlayers = (data || []).map(mapPlayerRowToPlayer);
+      // 2. Fetch all players using pagination
+      let allRows: any[] = [];
+      let page = 0;
+      const pageSize = 1000;
+      let hasMore = true;
+
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from("players")
+          .select(`
+            id,
+            sleeper_id,
+            name,
+            team,
+            position,
+            age,
+            starter_status,
+            injury_status
+          `)
+          .range(page * pageSize, (page + 1) * pageSize - 1);
+
+        if (error) {
+          console.error(`[Calculator] Error loading players on page ${page}:`, error);
+          break;
+        }
+
+        if (data && data.length > 0) {
+          allRows = [...allRows, ...data];
+          if (data.length < pageSize) {
+            hasMore = false;
+          } else {
+            page++;
+          }
+        } else {
+          hasMore = false;
+        }
+      }
+
+      const rawList = allRows;
+      console.log("🔥 [Calculator] PLAYER LOADING COMPLETED 🔥");
+      console.log(`[Calculator] Total players in Supabase (exact count query): ${dbCount}`);
+      console.log(`[Calculator] Total players loaded before cleanup: ${rawList.length}`);
+
+      // Filter to only keep currently rostered NFL players
+      const rostered = rawList.filter((row: any) => {
+        if (!row.team) return false;
+
+        const team = row.team.trim().toUpperCase();
+
+        if (team === "" || team === "FA" || team === "FREE AGENT") {
+          return false;
+        }
+
+        return true;
+      });
+
+      console.log(`[Calculator] Rostered players after team filtering: ${rostered.length}`);
+
+      // Deduplicate
+      const seenIds = new Set<string>();
+      const seenNames = new Set<string>();
+      const uniqueRostered: any[] = [];
+
+      for (const row of rostered) {
+        const sleeperId = row.sleeper_id;
+
+        if (sleeperId) {
+          if (seenIds.has(sleeperId)) continue;
+          seenIds.add(sleeperId);
+        }
+
+        const nameTeamKey = `${row.name.toLowerCase().trim()}|${row.team?.toLowerCase().trim()}`;
+
+        if (row.team) {
+          if (seenNames.has(nameTeamKey)) continue;
+          seenNames.add(nameTeamKey);
+        }
+
+        uniqueRostered.push(row);
+      }
+
+      // Sort results by Dynasty value descending, Name ascending
+      uniqueRostered.sort((a, b) => {
+        const valA = 0;
+        const valB = 0;
+
+        if (valB !== valA) {
+          return valB - valA;
+        }
+
+        return a.name.localeCompare(b.name);
+      });
+
+      console.log(`[Calculator] Total unique rostered players loaded: ${uniqueRostered.length}`);
+
+      const mappedPlayers = uniqueRostered.map(mapPlayerRowToPlayer);
       setPlayers(mappedPlayers);
     }
 
@@ -125,31 +209,41 @@ export default function Calculator() {
   ----------------------------- */
 
   const filteredA = React.useMemo(() => {
-
-    const q = searchA.toLowerCase().trim();
+    const qClean = cleanStringForSearch(searchA);
 
     const base = players.filter(p => {
-      const text = `${p.name} ${p.team} ${p.position}`.toLowerCase();
-      return showAllA ? true : text.includes(q);
+      if (showAllA) return true;
+      const nameClean = cleanStringForSearch(p.name);
+      const teamClean = p.team.toLowerCase();
+      const posClean = p.position.toLowerCase();
+
+      return nameClean.includes(qClean) || 
+             teamClean.includes(qClean) || 
+             posClean.includes(qClean) || 
+             `${nameClean} ${teamClean} ${posClean}`.includes(qClean);
     });
 
-    if (!showAllA && !q) return [];
+    if (!showAllA && !qClean) return [];
     return base.slice(0, 8);
-
   }, [searchA, showAllA, players]);
 
   const filteredB = React.useMemo(() => {
-
-    const q = searchB.toLowerCase().trim();
+    const qClean = cleanStringForSearch(searchB);
 
     const base = players.filter(p => {
-      const text = `${p.name} ${p.team} ${p.position}`.toLowerCase();
-      return showAllB ? true : text.includes(q);
+      if (showAllB) return true;
+      const nameClean = cleanStringForSearch(p.name);
+      const teamClean = p.team.toLowerCase();
+      const posClean = p.position.toLowerCase();
+
+      return nameClean.includes(qClean) || 
+             teamClean.includes(qClean) || 
+             posClean.includes(qClean) || 
+             `${nameClean} ${teamClean} ${posClean}`.includes(qClean);
     });
 
-    if (!showAllB && !q) return [];
+    if (!showAllB && !qClean) return [];
     return base.slice(0, 8);
-
   }, [searchB, showAllB, players]);
 
   /* -----------------------------

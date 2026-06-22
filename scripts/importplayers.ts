@@ -44,33 +44,78 @@ async function runImport() {
     }
 
     const data = await res.json();
+    const playersArray = Object.values(data as Record<string, any>);
 
-    // ✅ Convert object → array + filter positions
-    const playersArray = Object.values(data as Record<string, any>).filter((p) =>
-      ["QB", "RB", "WR", "TE"].includes(p.position)
-    );
+    // Fetch current database player count before cleanup
+    const { count: countBefore } = await supabase
+      .from("players")
+      .select("*", { count: "exact", head: true });
+    
+    console.log(`📊 Total players in Supabase before cleanup: ${countBefore ?? 0}`);
 
-    console.log(`📊 Total filtered players: ${playersArray.length}`);
+    // Filter to only keep currently rostered NFL players from all positions
+    const rosteredSleeperPlayers = playersArray.filter((p: any) => {
+      // 1. Must have a position
+      if (!p.position) return false;
 
-    // ✅ Transform data
-    const players = playersArray.map((p: any) => ({
+      // 2. Keep players with a real NFL team value
+      // 3. Remove free agents where team is null, empty, "FA", or "Free Agent"
+      if (!p.team) return false;
+      const team = p.team.trim().toUpperCase();
+      if (team === "" || team === "FA" || team === "FREE AGENT") return false;
+
+      // 4. Remove retired, inactive, practice squad
+      if (p.active !== true) return false;
+      if (p.status) {
+        const status = p.status.trim().toUpperCase();
+        if (status === "RETIRED" || status === "INACTIVE" || status === "PRACTICE SQUAD") {
+          return false;
+        }
+      }
+
+      return true;
+    });
+
+    console.log(`📊 Rostered players identified in Sleeper: ${rosteredSleeperPlayers.length}`);
+
+    // Deduplicate imported list by sleeper_id and name+team
+    const seenIds = new Set<string>();
+    const seenNames = new Set<string>();
+    const uniqueRostered: any[] = [];
+
+    for (const p of rosteredSleeperPlayers) {
+      const sleeperId = String(p.player_id);
+      if (seenIds.has(sleeperId)) continue;
+      seenIds.add(sleeperId);
+
+      const nameLower = `${p.first_name ?? ""} ${p.last_name ?? ""}`.trim().toLowerCase();
+      const teamLower = p.team ? p.team.trim().toLowerCase() : "";
+      const nameTeamKey = `${nameLower}|${teamLower}`;
+      if (seenNames.has(nameTeamKey)) continue;
+      seenNames.add(nameTeamKey);
+
+      uniqueRostered.push(p);
+    }
+
+    // Transform data
+    const playersToUpsert = uniqueRostered.map((p: any) => ({
       sleeper_id: String(p.player_id),
-      name: p.full_name,
+      name: `${p.first_name ?? ""} ${p.last_name ?? ""}`.trim(),
       team: p.team || null,
       position: p.position,
       age: p.birth_date
         ? calculateAge(new Date(p.birth_date).getTime())
         : null,
-      starter_status: p.active === true,
+      starter_status: p.active === true ? "STARTER" : "BACKUP", // Or match your enum
       injury_status: p.injury_status || null,
     }));
 
-    // ✅ Batch insert to Supabase
+    // Batch insert/upsert to Supabase
     const batchSize = 500;
     let totalInserted = 0;
 
-    for (let i = 0; i < players.length; i += batchSize) {
-      const batch = players.slice(i, i + batchSize);
+    for (let i = 0; i < playersToUpsert.length; i += batchSize) {
+      const batch = playersToUpsert.slice(i, i + batchSize);
 
       const { error } = await supabase
         .from("players")
@@ -82,10 +127,51 @@ async function runImport() {
       }
 
       totalInserted += batch.length;
-      console.log(`✅ Inserted ${totalInserted} players`);
+      console.log(`✅ Upserted ${totalInserted} players`);
     }
 
-    console.log("🎉 DONE — Players imported successfully");
+    // Now, clean up database: delete any players that are no longer currently rostered (i.e. not in our imported sleeper_ids)
+    console.log("🧹 Pruning unrostered players from database...");
+    
+    // Load all current player IDs from DB
+    let dbPlayersList: any[] = [];
+    let page = 0;
+    while (true) {
+      const { data: pageData, error } = await supabase
+        .from("players")
+        .select("id, sleeper_id")
+        .range(page * 1000, (page + 1) * 1000 - 1);
+      if (error || !pageData || pageData.length === 0) break;
+      dbPlayersList = dbPlayersList.concat(pageData);
+      page++;
+    }
+
+    const sleeperIdSet = new Set(playersToUpsert.map((p) => p.sleeper_id));
+    const idsToDelete = dbPlayersList
+      .filter((p) => !p.sleeper_id || !sleeperIdSet.has(p.sleeper_id))
+      .map((p) => p.id);
+
+    if (idsToDelete.length > 0) {
+      console.log(`🗑️ Deleting ${idsToDelete.length} unrostered players from database...`);
+      for (let i = 0; i < idsToDelete.length; i += 100) {
+        const batch = idsToDelete.slice(i, i + 100);
+        const { error } = await supabase
+          .from("players")
+          .delete()
+          .in("id", batch);
+        if (error) {
+          console.error("❌ Delete batch error:", error);
+        }
+      }
+    }
+
+    // Fetch final database player count after cleanup
+    const { count: countAfter } = await supabase
+      .from("players")
+      .select("*", { count: "exact", head: true });
+
+    console.log(`📊 Total rostered players in Supabase after cleanup: ${countAfter ?? 0}`);
+    console.log("🎉 DONE — Players imported and database cleaned successfully");
 
   } catch (err: any) {
     console.error("❌ Import failed:", err.message);

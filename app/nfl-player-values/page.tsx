@@ -4,6 +4,15 @@ import * as React from "react";
 import type { Player } from "@/lib/player";
 import { getSupabaseClient } from "@/lib/supabaseClient";
 
+function cleanStringForSearch(str: string): string {
+  return str
+    .toLowerCase()
+    .replace(/[.'’\-]/g, "")
+    .replace(/\s+(jr|sr|ii|iii|iv|v)\b/gi, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 export default function NflPlayerValuesPage() {
   const [query, setQuery] = React.useState("");
   const [positionFilter, setPositionFilter] = React.useState<string>("ALL");
@@ -14,21 +23,48 @@ export default function NflPlayerValuesPage() {
     const fetchPlayers = async () => {
       const supabase = getSupabaseClient();
 
-      const { data, error } = await supabase
+      // 1. Fetch exact total count in Supabase for debug logging
+      const { count: dbCount, error: countError } = await supabase
         .from("players")
-        .select("*")
-        .order("rank", { ascending: true })
-        .limit(100);
+        .select("*", { count: "exact", head: true });
 
-      if (error) {
-        console.error("Supabase error:", error);
-        return;
+      if (countError) {
+        console.error("[Rankings] Error fetching exact player count:", countError);
       }
 
-      // ✅ FIX APPLIED HERE
-      const formatted = data.map((p: any) => ({
+      // 2. Fetch all players in pages of 1000
+      let allRows: any[] = [];
+      let page = 0;
+      const pageSize = 1000;
+      let hasMore = true;
+
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from("players")
+          .select("*")
+          .order("rank", { ascending: true })
+          .range(page * pageSize, (page + 1) * pageSize - 1);
+
+        if (error) {
+          console.error(`[Rankings] Supabase error on page ${page}:`, error);
+          break;
+        }
+
+        if (data && data.length > 0) {
+          allRows = [...allRows, ...data];
+          if (data.length < pageSize) {
+            hasMore = false;
+          } else {
+            page++;
+          }
+        } else {
+          hasMore = false;
+        }
+      }
+
+      const formatted = allRows.map((p: any) => ({
         id: p.id,
-        sleeper_id: p.sleeper_id || p.id, // ✅ REQUIRED FIX
+        sleeper_id: p.sleeper_id || p.id,
         name: p.name,
         team: p.team,
         position: p.position,
@@ -39,6 +75,9 @@ export default function NflPlayerValuesPage() {
         rank: p.rank,
       }));
 
+      console.log(`[Rankings] Total players in Supabase (exact count query): ${dbCount}`);
+      console.log(`[Rankings] Total players loaded into state: ${formatted.length}`);
+
       setPlayers(formatted);
     };
 
@@ -47,20 +86,32 @@ export default function NflPlayerValuesPage() {
 
   // 🔍 Filtering logic
   const filteredPlayers = React.useMemo(() => {
-    const q = query.toLowerCase().trim();
+    const qClean = cleanStringForSearch(query);
 
     return players.filter((p) => {
-      const matchesSearch =
-        !q ||
-        p.name.toLowerCase().includes(q) ||
-        p.team.toLowerCase().includes(q);
-
       const matchesPosition =
         positionFilter === "ALL" || p.position === positionFilter;
+
+      if (!qClean) return matchesPosition;
+
+      const nameClean = cleanStringForSearch(p.name ?? "");
+      const teamClean = (p.team ?? "").toLowerCase();
+      const posClean = (p.position ?? "").toLowerCase();
+
+      const matchesSearch =
+        nameClean.includes(qClean) ||
+        teamClean.includes(qClean) ||
+        posClean.includes(qClean) ||
+        `${nameClean} ${teamClean} ${posClean}`.includes(qClean);
 
       return matchesSearch && matchesPosition;
     });
   }, [query, positionFilter, players]);
+
+  // 🚀 Rendering optimization: display only top 100 matches in the table
+  const displayedPlayers = React.useMemo(() => {
+    return filteredPlayers.slice(0, 100);
+  }, [filteredPlayers]);
 
   return (
     <div className="space-y-6">
@@ -98,6 +149,12 @@ export default function NflPlayerValuesPage() {
           </select>
         </div>
 
+        {/* 📊 Count Display Banner */}
+        <div className="flex justify-between items-center text-xs text-slate-500 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100">
+          <span>Showing top {displayedPlayers.length} of {filteredPlayers.length} matches</span>
+          <span>Loaded {players.length} total players</span>
+        </div>
+
         <div className="overflow-x-auto">
           <table className="min-w-full text-xs">
             <thead>
@@ -111,7 +168,7 @@ export default function NflPlayerValuesPage() {
             </thead>
 
             <tbody>
-              {filteredPlayers.map((player) => (
+              {displayedPlayers.map((player) => (
                 <tr
                   key={player.id}
                   className="cursor-pointer bg-slate-50 hover:bg-slate-100"

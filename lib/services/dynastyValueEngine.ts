@@ -69,11 +69,36 @@ export async function buildDynastyInputsFromFantasyCalc(
     }));
   }
 
-  const { data: players, error } = await supabase
-    .from("players")
-    .select("id, age, position");
+  let players: any[] = [];
+  let page = 0;
+  const pageSize = 1000;
+  let hasMore = true;
 
-  if (error || !players) {
+  while (hasMore) {
+    const { data, error } = await supabase
+      .from("players")
+      .select("id, age, position")
+      .range(page * pageSize, (page + 1) * pageSize - 1);
+
+    if (error) {
+      console.error("[dynastyValueEngine] failed to load players page:", error);
+      hasMore = false;
+      break;
+    }
+
+    if (data && data.length > 0) {
+      players = [...players, ...data];
+      if (data.length < pageSize) {
+        hasMore = false;
+      } else {
+        page++;
+      }
+    } else {
+      hasMore = false;
+    }
+  }
+
+  if (players.length === 0) {
     return sorted.map((p, i) => ({
       player_id: p.player_id,
       name: p.name,

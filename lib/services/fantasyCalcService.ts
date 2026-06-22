@@ -14,8 +14,9 @@ export interface FantasyCalcWithPlayerId extends FantasyCalcPlayer {
 
 // ✅ MULTIPLE FALLBACK SOURCES
 const URLS = [
-  "https://api.fantasycalc.com/values",
-  "https://fantasycalc.com/api/v1/players?format=json"
+  "https://api.fantasycalc.com/values/current?isDynasty=true&numQbs=1&numTeams=12&ppr=1",
+  "https://api.fantasycalc.com/values/current",
+  "https://api.fantasycalc.com/values"
 ];
 
 export async function fetchFantasyCalcPlayers(): Promise<FantasyCalcPlayer[]> {
@@ -51,13 +52,16 @@ export async function fetchFantasyCalcPlayers(): Promise<FantasyCalcPlayer[]> {
         continue;
       }
 
-      const players = playersArray.map((p: any) => ({
-        id: String(p.id ?? p.player_id ?? ""),
-        name: p.name,
-        position: (p.position ?? "").toString(),
-        market_value: Number(p.value ?? 0),
-        trade_frequency: Number(p.trades ?? 0),
-      }));
+      const players = playersArray.map((p: any) => {
+        const playerObj = p.player ?? p;
+        return {
+          id: String(playerObj.id ?? playerObj.player_id ?? p.id ?? ""),
+          name: playerObj.name ?? p.name,
+          position: (playerObj.position ?? p.position ?? "").toString(),
+          market_value: Number(p.value ?? playerObj.value ?? 0),
+          trade_frequency: Number(p.maybeTradeFrequency ?? p.trade_frequency ?? p.trades ?? 0),
+        };
+      });
 
       console.log(`✅ SUCCESS: fetched ${players.length} players`);
       return players;
@@ -70,8 +74,16 @@ export async function fetchFantasyCalcPlayers(): Promise<FantasyCalcPlayer[]> {
   return [];
 }
 
+function normalizeName(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[.'’\-]/g, "")
+    .replace(/\s+(jr|sr|ii|iii|iv|v)$/i, "")
+    .replace(/\s+/g, "");
+}
+
 /**
- * Mapping (same as before)
+ * Mapping with normalized exact matching and duplicate ID protection
  */
 export async function mapFantasyCalcPlayersToSupabase(
   fcPlayers: FantasyCalcPlayer[]
@@ -82,34 +94,63 @@ export async function mapFantasyCalcPlayersToSupabase(
     return fcPlayers.map((p) => ({ ...p, player_id: null }));
   }
 
-  const { data: players, error } = await supabase
-    .from("players")
-    .select("id, name, position");
+  let players: any[] = [];
+  let page = 0;
+  const pageSize = 1000;
+  while (true) {
+    const { data, error } = await supabase
+      .from("players")
+      .select("id, name, position")
+      .range(page * pageSize, (page + 1) * pageSize - 1);
 
-  if (error || !players) {
-    console.warn("[fantasyCalc] failed to load players", error);
-    return fcPlayers.map((p) => ({ ...p, player_id: null }));
+    if (error) {
+      console.warn("[fantasyCalc] failed to load players", error);
+      return fcPlayers.map((p) => ({ ...p, player_id: null }));
+    }
+    if (!data || data.length === 0) break;
+    players = players.concat(data);
+    page++;
   }
 
-  return fcPlayers.map((p) => {
+  const normalizedDBPlayers = players.map(pl => ({
+    id: pl.id,
+    name: pl.name,
+    position: (pl.position ?? "").toString().toUpperCase(),
+    normName: normalizeName(pl.name)
+  }));
+
+  const mapped: FantasyCalcWithPlayerId[] = [];
+  const assignedPlayerIds = new Set<string>();
+
+  for (const p of fcPlayers) {
     const nameLower = p.name.toLowerCase();
     const posUpper = p.position.toUpperCase();
+    const normFCName = normalizeName(p.name);
 
-    const direct = players.find(
+    // 1. Direct match (exact name & position)
+    let matched = normalizedDBPlayers.find(
       (pl) =>
-        (pl.name as string).toLowerCase() === nameLower &&
-        (!posUpper ||
-          (pl.position ?? "").toString().toUpperCase() === posUpper)
+        pl.name.toLowerCase() === nameLower &&
+        (!posUpper || pl.position === posUpper)
     );
 
-    const partial =
-      direct ??
-      players.find((pl) =>
-        (pl.name as string)
-          .toLowerCase()
-          .includes(nameLower.split(" ")[0] || "")
+    // 2. Normalized match (exact after stripping punctuation/spaces & position)
+    if (!matched) {
+      matched = normalizedDBPlayers.find(
+        (pl) =>
+          pl.normName === normFCName &&
+          (!posUpper || pl.position === posUpper)
       );
+    }
 
-    return { ...p, player_id: partial?.id ?? null };
-  });
+    let playerId: string | null = null;
+    if (matched && !assignedPlayerIds.has(matched.id)) {
+      playerId = matched.id;
+      assignedPlayerIds.add(matched.id);
+    }
+
+    mapped.push({ ...p, player_id: playerId });
+  }
+
+  return mapped;
 }
