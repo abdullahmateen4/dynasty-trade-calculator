@@ -32,7 +32,7 @@ export default function NflPlayerValuesPage() {
         console.error("[Rankings] Error fetching exact player count:", countError);
       }
 
-      // 2. Fetch all players in pages of 1000
+      // 2. Fetch all players in pages of 1000 with joined player_values
       let allRows: any[] = [];
       let page = 0;
       const pageSize = 1000;
@@ -41,8 +41,18 @@ export default function NflPlayerValuesPage() {
       while (hasMore) {
         const { data, error } = await supabase
           .from("players")
-          .select("*")
-          .order("rank", { ascending: true })
+          .select(`
+            id,
+            sleeper_id,
+            name,
+            team,
+            position,
+            age,
+            starter_status,
+            injury_status,
+            player_values(value)
+          `)
+          .order("id", { ascending: true })
           .range(page * pageSize, (page + 1) * pageSize - 1);
 
         if (error) {
@@ -62,27 +72,60 @@ export default function NflPlayerValuesPage() {
         }
       }
 
-      const formatted = allRows.map((p: any) => ({
-        id: p.id,
-        sleeper_id: p.sleeper_id || p.id,
-        name: p.name,
-        team: p.team,
-        position: p.position,
-        age: p.age,
-        baseValue: p.base_value,
-        starterStatus: p.starter_status,
-        injuryStatus: p.injury_status,
-        rank: p.rank,
+      const formatted = allRows.map((p: any) => {
+        const valObj = p.player_values;
+        const rawValue = Array.isArray(valObj)
+          ? valObj[0]?.value
+          : valObj?.value;
+        const baseValue = Number(rawValue ?? 0);
+
+        return {
+          id: p.id,
+          sleeper_id: p.sleeper_id || p.id,
+          name: p.name,
+          team: p.team,
+          position: p.position,
+          age: p.age,
+          baseValue: baseValue,
+          starterStatus: p.starter_status,
+          injuryStatus: p.injury_status,
+          rank: 0, // Assigned after sorting
+        };
+      });
+
+      // 3. Sort players by value descending, then by name ascending
+      formatted.sort((a, b) => {
+        if (b.baseValue !== a.baseValue) {
+          return b.baseValue - a.baseValue;
+        }
+        return a.name.localeCompare(b.name);
+      });
+
+      // 4. Dynamically assign global ranks
+      const ranked = formatted.map((p, index) => ({
+        ...p,
+        rank: index + 1,
       }));
 
       console.log(`[Rankings] Total players in Supabase (exact count query): ${dbCount}`);
-      console.log(`[Rankings] Total players loaded into state: ${formatted.length}`);
+      console.log(`[Rankings] Total players loaded into state: ${ranked.length}`);
 
-      setPlayers(formatted);
+      setPlayers(ranked);
     };
 
     fetchPlayers();
   }, []);
+
+  // Dynamically extract all unique positions present in the loaded dataset
+  const positions = React.useMemo(() => {
+    const set = new Set<string>();
+    players.forEach((p) => {
+      if (p.position) {
+        set.add(p.position.trim().toUpperCase());
+      }
+    });
+    return Array.from(set).sort();
+  }, [players]);
 
   // 🔍 Filtering logic
   const filteredPlayers = React.useMemo(() => {
@@ -141,11 +184,12 @@ export default function NflPlayerValuesPage() {
             onChange={(e) => setPositionFilter(e.target.value)}
             className="h-8 rounded-lg border border-border px-2 text-xs"
           >
-            <option value="ALL">All</option>
-            <option value="QB">QB</option>
-            <option value="RB">RB</option>
-            <option value="WR">WR</option>
-            <option value="TE">TE</option>
+            <option value="ALL">All Positions</option>
+            {positions.map((pos) => (
+              <option key={pos} value={pos}>
+                {pos}
+              </option>
+            ))}
           </select>
         </div>
 

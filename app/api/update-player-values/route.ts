@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { deriveStarterStatus } from "@/lib/deriveStarterStatus";
 
 const SLEEPER_URL = "https://api.sleeper.app/v1/players/nfl";
 
@@ -57,6 +58,8 @@ export async function GET() {
           position: p.position,
           age,
           injury_status: p.injury_status ?? null,
+          // ✅ FIXED: derive from depth_chart_order, not p.active
+          starter_status: deriveStarterStatus(p),
         };
       });
 

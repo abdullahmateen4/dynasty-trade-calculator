@@ -5,6 +5,7 @@ dotenv.config({ path: ".env.local" });
 
 import fetch from "node-fetch";
 import { createClient } from "@supabase/supabase-js";
+import { deriveStarterStatus } from "../lib/deriveStarterStatus";
 
 // ✅ Load env variables
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -106,7 +107,8 @@ async function runImport() {
       age: p.birth_date
         ? calculateAge(new Date(p.birth_date).getTime())
         : null,
-      starter_status: p.active === true ? "STARTER" : "BACKUP", // Or match your enum
+      // ✅ FIXED: derive from depth_chart_order, not p.active
+      starter_status: deriveStarterStatus(p),
       injury_status: p.injury_status || null,
     }));
 
